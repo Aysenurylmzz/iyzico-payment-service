@@ -17,3 +17,8 @@ spring:
 
 server:
   port: 8080
+
+iyzico:
+  api-key: SANDBOX_API_KEY
+  secret-key: SANDBOX_SECRET_KEY
+  base-url: https://sandbox-api.iyzipay.com
