@@ -1,5 +1,8 @@
 package com.aysenur.payment_service.service;
 
+import com.iyzipay.model.CheckoutForm;
+import com.iyzipay.request.RetrieveCheckoutFormRequest;
+import com.aysenur.payment_service.integration.iyzico.IyzicoClient;
 import com.iyzipay.model.CheckoutFormInitialize;
 import com.iyzipay.model.BasketItem;
 import com.iyzipay.model.BasketItemType;
@@ -13,7 +16,6 @@ import com.iyzipay.model.Currency;
 import com.iyzipay.model.Locale;
 import com.iyzipay.model.PaymentGroup;
 import com.iyzipay.request.CreateCheckoutFormInitializeRequest;
-import com.iyzipay.Options;
 import com.aysenur.payment_service.dto.PaymentRequest;
 import com.aysenur.payment_service.dto.PaymentResponse;
 import com.aysenur.payment_service.entity.Payment;
@@ -24,13 +26,13 @@ import org.springframework.stereotype.Service;
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
-    private final Options iyzicoOptions;
+    private final IyzicoClient iyzicoClient;
 
     public PaymentService(PaymentRepository paymentRepository,
-			 Options iyzicoOptions) {
+			 IyzicoClient iyzicoClient) {
 
 	this.paymentRepository = paymentRepository;
-	this.iyzicoOptions = iyzicoOptions;
+	this.iyzicoClient = iyzicoClient;
     }
 
     public PaymentResponse createPayment(PaymentRequest request) {
@@ -64,9 +66,10 @@ public class PaymentService {
             new CreateCheckoutFormInitializeRequest();
 
     iyzicoRequest.setLocale(Locale.TR.getValue());
-    iyzicoRequest.setConversationId(
-            "conversation-" + System.currentTimeMillis()
-    );
+    String conversationId =
+        "conversation-" + System.currentTimeMillis();
+
+    iyzicoRequest.setConversationId(conversationId);
 
     iyzicoRequest.setPrice(request.getPrice());
     iyzicoRequest.setPaidPrice(request.getPaidPrice());
@@ -137,14 +140,23 @@ public class PaymentService {
 
    iyzicoRequest.setBasketItems(basketItems);
 
-
-
    CheckoutFormInitialize iyzicoResponse =
-        CheckoutFormInitialize.create(
-                iyzicoRequest,
-                iyzicoOptions
-        );
- 
+        iyzicoClient.initialize(iyzicoRequest);
+
+   if ("success".equalsIgnoreCase(iyzicoResponse.getStatus())) {
+
+    Payment payment = Payment.builder()
+            .conversationId(conversationId)
+            .token(iyzicoResponse.getToken())
+            .price(request.getPrice())
+            .paidPrice(request.getPaidPrice())
+            .currency(Currency.TRY.name())
+            .status("PENDING")
+            .build();
+
+    paymentRepository.save(payment);
+    }
+
    CheckoutFormResponse response = new CheckoutFormResponse();
 
    response.setStatus(iyzicoResponse.getStatus());
@@ -155,5 +167,33 @@ public class PaymentService {
    return response;
 
 
+}
+   public String processCallback(String token) {
+
+    Payment payment = paymentRepository.findByToken(token)
+            .orElseThrow(() ->
+                    new RuntimeException("Bu token ile ödeme kaydı bulunamadı.")
+            );
+
+    RetrieveCheckoutFormRequest retrieveRequest =
+            new RetrieveCheckoutFormRequest();
+
+    retrieveRequest.setLocale(Locale.TR.getValue());
+    retrieveRequest.setConversationId(payment.getConversationId());
+    retrieveRequest.setToken(token);
+
+    CheckoutForm checkoutForm =
+            iyzicoClient.retrieve(retrieveRequest);
+
+    if ("success".equalsIgnoreCase(checkoutForm.getStatus())) {
+        payment.setStatus("SUCCESS");
+        payment.setPaymentId(checkoutForm.getPaymentId());
+    } else {
+        payment.setStatus("FAILURE");
+    }
+
+    paymentRepository.save(payment);
+
+    return payment.getStatus();
 }
 }

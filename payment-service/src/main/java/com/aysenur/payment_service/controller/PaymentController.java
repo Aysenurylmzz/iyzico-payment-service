@@ -39,14 +39,19 @@ public class PaymentController {
         return ResponseEntity.ok(response);
    }
 
+
+
     @PostMapping("/callback")
     public ResponseEntity<String> paymentCallback(
-           @RequestParam String token
+          @RequestParam String token
     ) {
 
-          return ResponseEntity.ok(
-                 "Ödeme callback alındı. Token: " + token
-      );
+       String paymentStatus =
+             paymentService.processCallback(token);
+
+       return ResponseEntity.ok(
+               "Ödeme sonucu: " + paymentStatus
+       );
 }
 
 }

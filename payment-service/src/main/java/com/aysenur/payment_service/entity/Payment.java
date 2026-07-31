@@ -24,6 +24,9 @@ public class Payment {
 
     @Column(name = "conversation_id")
     private String conversationId;
+    
+    @Column(name = "token")
+    private String token;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;

@@ -1,0 +1,2 @@
+ALTER TABLE payments
+ADD COLUMN token VARCHAR(255);
