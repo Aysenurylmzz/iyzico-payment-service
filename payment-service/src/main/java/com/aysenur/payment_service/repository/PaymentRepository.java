@@ -8,7 +8,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
 	Optional<Payment> findByToken(String token);
 
-
-
+	Optional<Payment> findByConversationId(String conversationId);
 
 }

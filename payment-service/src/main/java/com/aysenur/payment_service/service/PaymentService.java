@@ -1,39 +1,47 @@
 package com.aysenur.payment_service.service;
 
-import com.iyzipay.model.CheckoutForm;
-import com.iyzipay.request.RetrieveCheckoutFormRequest;
-import com.aysenur.payment_service.integration.iyzico.IyzicoClient;
-import com.iyzipay.model.CheckoutFormInitialize;
-import com.iyzipay.model.BasketItem;
-import com.iyzipay.model.BasketItemType;
 import java.util.ArrayList;
 import java.util.List;
-import com.iyzipay.model.Address;
-import com.iyzipay.model.Buyer;
+import java.math.BigDecimal;
+import org.springframework.stereotype.Service;
+import com.iyzipay.model.PaymentItem;
 import com.aysenur.payment_service.dto.CheckoutFormRequest;
 import com.aysenur.payment_service.dto.CheckoutFormResponse;
+import com.aysenur.payment_service.dto.PaymentRequest;
+import com.aysenur.payment_service.dto.PaymentResponse;
+import com.aysenur.payment_service.entity.Payment;
+import com.aysenur.payment_service.entity.PaymentTransaction;
+import com.aysenur.payment_service.integration.iyzico.IyzicoClient;
+import com.aysenur.payment_service.repository.PaymentRepository;
+import com.aysenur.payment_service.repository.PaymentTransactionRepository;
+import com.iyzipay.model.Address;
+import com.iyzipay.model.BasketItem;
+import com.iyzipay.model.BasketItemType;
+import com.iyzipay.model.Buyer;
+import com.iyzipay.model.CheckoutForm;
+import com.iyzipay.model.CheckoutFormInitialize;
 import com.iyzipay.model.Currency;
 import com.iyzipay.model.Locale;
 import com.iyzipay.model.PaymentGroup;
 import com.iyzipay.request.CreateCheckoutFormInitializeRequest;
-import com.aysenur.payment_service.dto.PaymentRequest;
-import com.aysenur.payment_service.dto.PaymentResponse;
-import com.aysenur.payment_service.entity.Payment;
-import com.aysenur.payment_service.repository.PaymentRepository;
-import org.springframework.stereotype.Service;
+import com.iyzipay.request.RetrieveCheckoutFormRequest;
 
 @Service
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final IyzicoClient iyzicoClient;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
-    public PaymentService(PaymentRepository paymentRepository,
-			 IyzicoClient iyzicoClient) {
-
-	this.paymentRepository = paymentRepository;
-	this.iyzicoClient = iyzicoClient;
-    }
+    public PaymentService(
+        PaymentRepository paymentRepository,
+        IyzicoClient iyzicoClient,
+        PaymentTransactionRepository paymentTransactionRepository
+   ) {
+    this.paymentRepository = paymentRepository;
+    this.iyzicoClient = iyzicoClient;
+    this.paymentTransactionRepository = paymentTransactionRepository;
+   }
 
     public PaymentResponse createPayment(PaymentRequest request) {
 
@@ -192,8 +200,46 @@ public class PaymentService {
         payment.setStatus("FAILURE");
     }
 
+    List<PaymentItem> paymentItems = checkoutForm.getPaymentItems();
+
+    for (PaymentItem item : paymentItems) {
+
+    PaymentTransaction transaction = PaymentTransaction.builder()
+            .payment(payment)
+            .iyzicoTransactionId(item.getPaymentTransactionId())
+            .itemId(item.getItemId())
+            .paidPrice(item.getPaidPrice())
+            .refundedAmount(BigDecimal.ZERO)
+            .status(String.valueOf(item.getTransactionStatus()))
+            .build();
+
+    paymentTransactionRepository.save(transaction);
+  }
+
     paymentRepository.save(payment);
 
-    return payment.getStatus();
+    return payment.getConversationId();
+  }
+
+   public PaymentResponse getPaymentByConversationId(
+		String conversationId) {
+
+
+	Payment payment = paymentRepository
+		.findByConversationId(conversationId)
+		.orElseThrow(() ->
+			new RuntimeException("Ödeme bulunamadı."));
+
+
+	return new PaymentResponse(
+		payment.getId(),
+		payment.getPaymentId(),
+                payment.getConversationId(),
+                payment.getPrice(),
+                payment.getPaidPrice(),
+                payment.getCurrency(),
+                payment.getStatus(),
+                payment.getCreatedAt()
+    );
 }
 }

@@ -22,3 +22,6 @@ iyzico:
   api-key: sandbox-WlfGvI55L7mxfHobUicOPJQAJir7lP9B
   secret-key: sandbox-QLhnPcR9PwppAdWNspNrVAzSK6IiqL36
   base-url: https://sandbox-api.iyzipay.com
+  
+app:
+  api-key: ${INTERNAL_API_KEY}  
