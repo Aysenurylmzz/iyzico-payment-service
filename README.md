@@ -1,6 +1,6 @@
 # Iyzico Payment Service
 
-##  Proje Hakkında
+## Proje Hakkında
 
 Iyzico Payment Service, Spring Boot kullanılarak geliştirilmiş bir ödeme servisidir. Proje, iyzico Checkout Form entegrasyonu ile güvenli ödeme işlemlerinin başlatılması, ödeme sonucunun sorgulanması ve webhook bildirimlerinin işlenmesini sağlamaktadır.
 
@@ -8,7 +8,7 @@ Projede katmanlı mimari (Layered Architecture) uygulanmış olup iyzico SDK'sı
 
 ---
 
-# ️ Kullanılan Teknolojiler
+# Kullanılan Teknolojiler
 
 - Java 17
 - Spring Boot
@@ -83,7 +83,18 @@ payment-service
 
 ---
 
-## ️ Kurulum
+# Uygulamaya Erişim
+
+| Servis | Adres |
+|---------|--------|
+| Frontend | http://localhost:5173 |
+| Backend | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui/index.html |
+| OpenAPI | http://localhost:8080/v3/api-docs |
+
+---
+
+# Kurulum
 
 ## 1. PostgreSQL
 
@@ -96,12 +107,14 @@ docker compose up -d
 ## 2. Backend
 
 ```bash
+cd payment-service
 ./mvnw spring-boot:run
 ```
 
 ## 3. Frontend
 
 ```bash
+cd payment-web
 npm install
 npm run dev
 ```
@@ -130,10 +143,52 @@ VITE_INTERNAL_API_KEY=your-api-key
 
 | Method | Endpoint | Açıklama |
 |---------|----------|----------|
-| POST | `/api/payments/checkout-form` | Ödeme sayfasını oluşturur |
-| POST | `/api/payments/callback` | Ödeme sonucunu işler |
-| POST | `/api/payments/webhook` | iyzico webhook bildirimlerini alır |
-| GET | `/api/payments/{conversationId}` | Ödeme bilgisini getirir |
+| POST | `/api/payments/checkout-form` | Checkout Form oluşturur ve ödeme sayfasını başlatır. |
+| POST | `/api/payments/callback` | Ödeme tamamlandıktan sonra callback işlemini gerçekleştirir. |
+| POST | `/api/payments/webhook` | iyzico tarafından gönderilen webhook bildirimlerini işler. |
+| GET | `/api/payments/{conversationId}` | Conversation ID bilgisine göre ödeme sonucunu getirir. |
+
+---
+
+# Sandbox Ödeme Testi
+
+Proje iyzico Sandbox ortamı kullanılarak test edilmektedir.
+
+Örnek kart bilgileri:
+
+| Alan | Değer |
+|------|-------|
+| Kart Numarası | 5528790000000008 |
+| Son Kullanma Tarihi | 12/30 |
+| CVV | 123 |
+
+Frontend üzerinden ödeme başlatıldıktan sonra kullanıcı iyzico ödeme sayfasına yönlendirilir. Ödeme tamamlandıktan sonra callback mekanizması çalışır ve ödeme sonucu uygulama üzerinde görüntülenebilir.
+
+---
+
+# Sistem Akışı
+
+```
+React Frontend
+        │
+        ▼
+Spring Boot REST API
+        │
+        ▼
+API Key Doğrulama
+        │
+        ▼
+Payment Service
+        │
+        ▼
+Iyzico Client
+        │
+        ▼
+iyzico Sandbox API
+        │
+        ▼
+PostgreSQL
+```
 
 ---
 
@@ -164,4 +219,4 @@ Test edilen senaryolar:
 
 # Not
 
-Bu proje ödeme servislerinde kullanılan temel güvenlik mekanizmaları, katmanlı mimari ve iyzico Checkout Form entegrasyonunu örneklemek amacıyla hazırlanmıştır.
+Bu proje, iyzico Checkout Form entegrasyonu, katmanlı mimari, API güvenliği ve webhook yönetimi gibi modern ödeme sistemlerinde kullanılan temel yaklaşımları örneklemek amacıyla hazırlanmıştır.
