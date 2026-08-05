@@ -1,10 +1,13 @@
 package com.aysenur.payment_service.service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
-import com.iyzipay.model.PaymentItem;
+
+import com.aysenur.payment_service.integration.iyzico.IyzicoCheckoutInitializeResult;
+import com.aysenur.payment_service.integration.iyzico.IyzicoCheckoutResult;
+import com.aysenur.payment_service.integration.iyzico.IyzicoPaymentItemResult;
 import com.aysenur.payment_service.dto.CheckoutFormRequest;
 import com.aysenur.payment_service.dto.CheckoutFormResponse;
 import com.aysenur.payment_service.dto.PaymentRequest;
@@ -14,17 +17,6 @@ import com.aysenur.payment_service.entity.PaymentTransaction;
 import com.aysenur.payment_service.integration.iyzico.IyzicoClient;
 import com.aysenur.payment_service.repository.PaymentRepository;
 import com.aysenur.payment_service.repository.PaymentTransactionRepository;
-import com.iyzipay.model.Address;
-import com.iyzipay.model.BasketItem;
-import com.iyzipay.model.BasketItemType;
-import com.iyzipay.model.Buyer;
-import com.iyzipay.model.CheckoutForm;
-import com.iyzipay.model.CheckoutFormInitialize;
-import com.iyzipay.model.Currency;
-import com.iyzipay.model.Locale;
-import com.iyzipay.model.PaymentGroup;
-import com.iyzipay.request.CreateCheckoutFormInitializeRequest;
-import com.iyzipay.request.RetrieveCheckoutFormRequest;
 
 @Service
 public class PaymentService {
@@ -70,86 +62,15 @@ public class PaymentService {
     public CheckoutFormResponse initializeCheckoutForm(
         CheckoutFormRequest request) {
 
-    CreateCheckoutFormInitializeRequest iyzicoRequest =
-            new CreateCheckoutFormInitializeRequest();
-
-    iyzicoRequest.setLocale(Locale.TR.getValue());
     String conversationId =
         "conversation-" + System.currentTimeMillis();
 
-    iyzicoRequest.setConversationId(conversationId);
-
-    iyzicoRequest.setPrice(request.getPrice());
-    iyzicoRequest.setPaidPrice(request.getPaidPrice());
-    iyzicoRequest.setCurrency(Currency.TRY.name());
-    iyzicoRequest.setPaymentGroup(PaymentGroup.PRODUCT.name());
-
-    iyzicoRequest.setCallbackUrl(
-        "http://localhost:8080/api/payments/callback"
-    );
-
-   Buyer buyer = new Buyer();
-
-   buyer.setId("buyer-" + System.currentTimeMillis());
-   buyer.setName(request.getBuyerName());
-   buyer.setSurname(request.getBuyerSurname());
-   buyer.setEmail(request.getBuyerEmail());
-   buyer.setGsmNumber(request.getBuyerPhone());
-   buyer.setIdentityNumber(request.getBuyerIdentityNumber());
-
-   buyer.setRegistrationAddress(request.getAddress());
-   buyer.setCity(request.getCity());
-   buyer.setCountry(request.getCountry());
-   buyer.setZipCode(request.getZipCode());
-
-   buyer.setIp("127.0.0.1");
-
-   iyzicoRequest.setBuyer(buyer);
-
-   Address shippingAddress = new Address();
-
-   shippingAddress.setContactName(
-          request.getBuyerName() + " " + request.getBuyerSurname()
-   );
-
-   shippingAddress.setAddress(request.getAddress());
-   shippingAddress.setCity(request.getCity());
-   shippingAddress.setCountry(request.getCountry());
-   shippingAddress.setZipCode(request.getZipCode());
-
-   iyzicoRequest.setShippingAddress(shippingAddress);
-
-
-   Address billingAddress = new Address();
-
-   billingAddress.setContactName(
-          request.getBuyerName() + " " + request.getBuyerSurname()
-   );
-
-   billingAddress.setAddress(request.getAddress());
-   billingAddress.setCity(request.getCity());
-   billingAddress.setCountry(request.getCountry());
-   billingAddress.setZipCode(request.getZipCode());
-
-   iyzicoRequest.setBillingAddress(billingAddress);
-
-   List<BasketItem> basketItems = new ArrayList<>();
-
-
-   BasketItem basketItem = new BasketItem();
-
-   basketItem.setId("item-1");
-   basketItem.setName("Test Ürünü");
-   basketItem.setCategory1("Genel");
-   basketItem.setItemType(BasketItemType.VIRTUAL.name());
-   basketItem.setPrice(request.getPrice());
-
-   basketItems.add(basketItem);
-
-   iyzicoRequest.setBasketItems(basketItems);
-
-   CheckoutFormInitialize iyzicoResponse =
-        iyzicoClient.initialize(iyzicoRequest);
+    IyzicoCheckoutInitializeResult iyzicoResponse =
+        iyzicoClient.initializeCheckoutForm(
+                request,
+                conversationId,
+                "http://localhost:8080/api/payments/callback"
+        );
 
    if ("success".equalsIgnoreCase(iyzicoResponse.getStatus())) {
 
@@ -158,7 +79,7 @@ public class PaymentService {
             .token(iyzicoResponse.getToken())
             .price(request.getPrice())
             .paidPrice(request.getPaidPrice())
-            .currency(Currency.TRY.name())
+            .currency("TRY")
             .status("PENDING")
             .build();
 
@@ -183,15 +104,11 @@ public class PaymentService {
                     new RuntimeException("Bu token ile ödeme kaydı bulunamadı.")
             );
 
-    RetrieveCheckoutFormRequest retrieveRequest =
-            new RetrieveCheckoutFormRequest();
-
-    retrieveRequest.setLocale(Locale.TR.getValue());
-    retrieveRequest.setConversationId(payment.getConversationId());
-    retrieveRequest.setToken(token);
-
-    CheckoutForm checkoutForm =
-            iyzicoClient.retrieve(retrieveRequest);
+    IyzicoCheckoutResult checkoutForm =
+        iyzicoClient.retrieveCheckoutForm(
+                token,
+                payment.getConversationId()
+        );
 
     if ("success".equalsIgnoreCase(checkoutForm.getStatus())) {
         payment.setStatus("SUCCESS");
@@ -200,9 +117,9 @@ public class PaymentService {
         payment.setStatus("FAILURE");
     }
 
-    List<PaymentItem> paymentItems = checkoutForm.getPaymentItems();
+    List<IyzicoPaymentItemResult> paymentItems = checkoutForm.getPaymentItems();
 
-    for (PaymentItem item : paymentItems) {
+    for (IyzicoPaymentItemResult item : paymentItems) {
 
     PaymentTransaction transaction = PaymentTransaction.builder()
             .payment(payment)

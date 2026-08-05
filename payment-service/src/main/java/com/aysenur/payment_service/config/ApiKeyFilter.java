@@ -1,16 +1,17 @@
 package com.aysenur.payment_service.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import java.io.IOException;
 
 @Component
 public class ApiKeyFilter extends OncePerRequestFilter {
@@ -32,6 +33,11 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 	) throws ServletException, IOException {
 
 	String path = request.getRequestURI();
+
+	if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+    filterChain.doFilter(request, response);
+    return;
+    }
 
 	if (path.equals("/api/payments/callback")
         	|| path.equals("/api/payments/webhook")
