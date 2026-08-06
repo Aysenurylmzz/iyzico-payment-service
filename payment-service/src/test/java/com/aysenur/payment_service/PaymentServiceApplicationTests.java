@@ -7,7 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 class PaymentServiceApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void contextLoads() { //uygulamayı başlat bütün beanleri oluştur hiç hata yok mu test başarılı
 	}
 
 }
