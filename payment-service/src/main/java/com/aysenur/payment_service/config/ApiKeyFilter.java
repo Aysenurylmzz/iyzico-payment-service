@@ -41,8 +41,9 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
 	if (path.equals("/api/payments/callback")
         	|| path.equals("/api/payments/webhook")
-		|| path.startsWith("/swagger-ui")
-        	|| path.startsWith("/v3/api-docs")) {
+		    || path.startsWith("/swagger-ui")
+        	|| path.startsWith("/v3/api-docs")
+			|| path.equals("/actuator/health")) {
 
     	filterChain.doFilter(request, response);
     	return;

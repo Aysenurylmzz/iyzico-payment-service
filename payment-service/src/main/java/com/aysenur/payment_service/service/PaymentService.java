@@ -2,19 +2,21 @@ package com.aysenur.payment_service.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import com.aysenur.payment_service.integration.iyzico.IyzicoCheckoutInitializeResult;
-import com.aysenur.payment_service.integration.iyzico.IyzicoCheckoutResult;
-import com.aysenur.payment_service.integration.iyzico.IyzicoPaymentItemResult;
 import com.aysenur.payment_service.dto.CheckoutFormRequest;
 import com.aysenur.payment_service.dto.CheckoutFormResponse;
 import com.aysenur.payment_service.dto.PaymentRequest;
 import com.aysenur.payment_service.dto.PaymentResponse;
 import com.aysenur.payment_service.entity.Payment;
 import com.aysenur.payment_service.entity.PaymentTransaction;
+import com.aysenur.payment_service.exception.PaymentNotFoundException;
+import com.aysenur.payment_service.integration.iyzico.IyzicoCheckoutInitializeResult;
+import com.aysenur.payment_service.integration.iyzico.IyzicoCheckoutResult;
 import com.aysenur.payment_service.integration.iyzico.IyzicoClient;
+import com.aysenur.payment_service.integration.iyzico.IyzicoPaymentItemResult;
 import com.aysenur.payment_service.repository.PaymentRepository;
 import com.aysenur.payment_service.repository.PaymentTransactionRepository;
 
@@ -63,13 +65,13 @@ public class PaymentService {
         CheckoutFormRequest request) {
 
     String conversationId =
-        "conversation-" + System.currentTimeMillis();
+                UUID.randomUUID().toString();
 
     IyzicoCheckoutInitializeResult iyzicoResponse =
         iyzicoClient.initializeCheckoutForm(
                 request,
                 conversationId,
-                "http://localhost:8080/api/payments/callback"
+                "https://varnish-slit-defy.ngrok-free.dev/api/payments/callback"
         );
 
    if ("success".equalsIgnoreCase(iyzicoResponse.getStatus())) {
@@ -101,8 +103,12 @@ public class PaymentService {
 
     Payment payment = paymentRepository.findByToken(token)
             .orElseThrow(() ->
-                    new RuntimeException("Bu token ile ödeme kaydı bulunamadı.")
+                    new PaymentNotFoundException("Bu token ile ödeme kaydı bulunamadı.")
             );
+
+    if ("SUCCESS".equalsIgnoreCase(payment.getStatus())) {
+        return payment.getConversationId();
+    }
 
     IyzicoCheckoutResult checkoutForm =
         iyzicoClient.retrieveCheckoutForm(
@@ -111,11 +117,11 @@ public class PaymentService {
         );
 
     if ("success".equalsIgnoreCase(checkoutForm.getStatus())) {
-        payment.setStatus("SUCCESS");
-        payment.setPaymentId(checkoutForm.getPaymentId());
+       payment.setStatus("SUCCESS");
+       payment.setPaymentId(checkoutForm.getPaymentId());
     } else {
-        payment.setStatus("FAILURE");
-    }
+         payment.setStatus("FAILURE");
+     }
 
     List<IyzicoPaymentItemResult> paymentItems = checkoutForm.getPaymentItems();
 
@@ -145,7 +151,7 @@ public class PaymentService {
 	Payment payment = paymentRepository
 		.findByConversationId(conversationId)
 		.orElseThrow(() ->
-			new RuntimeException("Ödeme bulunamadı."));
+			new PaymentNotFoundException("Ödeme bulunamadı."));
 
 
 	return new PaymentResponse(
