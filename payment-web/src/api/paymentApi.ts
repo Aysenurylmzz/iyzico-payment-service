@@ -18,6 +18,7 @@ export interface CheckoutFormRequest {
 export interface CheckoutFormResponse {
   status: string;
   paymentPageUrl: string | null;
+  checkoutFormContent: string | null;
   token: string | null;
   errorMessage: string | null;
 }

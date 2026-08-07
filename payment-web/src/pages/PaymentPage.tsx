@@ -1,47 +1,44 @@
 import { useState } from "react";
 import { initializeCheckoutForm } from "../api/paymentApi";
+import IyzicoCheckoutForm from "../components/IyzicoCheckoutForm";
 
 function PaymentPage() {
   const [buyerName, setBuyerName] = useState("");
   const [buyerSurname, setBuyerSurname] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [price, setPrice] = useState("100");
- 
+  const [checkoutFormContent, setCheckoutFormContent] =
+    useState<string | null>(null);
+
   const handleSubmit = async (
     event: React.FormEvent
   ) => {
-
     event.preventDefault();
 
     const response = await initializeCheckoutForm({
+      price: Number(price),
+      paidPrice: Number(price),
+      currency: "TRY",
 
-        price: Number(price),
-        paidPrice: Number(price),
-        currency: "TRY",
+      buyerName,
+      buyerSurname,
+      buyerEmail,
 
-        buyerName,
-        buyerSurname,
-        buyerEmail,
+      buyerPhone: "5551112233",
+      buyerIdentityNumber: "11111111111",
 
-        buyerPhone: "5551112233",
-        buyerIdentityNumber: "11111111111",
-
-        address: "Test Mahallesi",
-        city: "İstanbul",
-        country: "Turkey",
-        zipCode: "34000"
+      address: "Test Mahallesi",
+      city: "İstanbul",
+      country: "Turkey",
+      zipCode: "34000"
     });
 
-    if (response.paymentPageUrl) {
-
-        window.location.href = response.paymentPageUrl;
-
+    if (response.checkoutFormContent) {
+      setCheckoutFormContent(response.checkoutFormContent);
     } else {
-
-        alert(response.errorMessage);
-
+      alert(response.errorMessage);
     }
-};
+  };
 
   return (
     <div>
@@ -105,6 +102,10 @@ function PaymentPage() {
           Ödeme Yap
         </button>
       </form>
+
+      {checkoutFormContent && (
+        <IyzicoCheckoutForm content={checkoutFormContent} />
+      )}
     </div>
   );
 }
